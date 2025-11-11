@@ -1,5 +1,6 @@
 // src/gemini.ts
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateCommitMessageWithOpenRouter } from "./openrouter";
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
@@ -29,9 +30,16 @@ export async function generateCommitMessageFromDiff(diff: string): Promise<strin
     const text = response.text();
     return text;
   } catch (error: any) {
-    console.error("Error generating commit message from Gemini:", error);
-
-    const message = error.message || "An unknown error occurred.";
-    throw new Error(`Failed to communicate with the AI model: ${message}`);
+    console.error("Error generating commit message from Gemini. Attempting fallback to OpenRouter.", error);
+    try {
+      console.log("Using OpenRouter as a fallback...");
+      return await generateCommitMessageWithOpenRouter(diff);
+    } catch (fallbackError: any) {
+      console.error("OpenRouter fallback also failed:", fallbackError);
+      // Combine messages to give the user more context
+      const originalMessage = error.message || "An unknown error occurred with the primary service.";
+      const fallbackMessage = fallbackError.message || "An unknown error occurred with the fallback service.";
+      throw new Error(`Primary: ${originalMessage} | Fallback: ${fallbackMessage}`);
+    }
   }
 }
