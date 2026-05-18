@@ -2,16 +2,9 @@
 
 const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 
-if (!OPENROUTER_API_KEY) {
-  console.warn(
-    "VITE_OPENROUTER_API_KEY is not set in .env file. Fallback to OpenRouter will not be available."
-  );
-
-}
-
-export async function generateCommitMessageWithOpenRouter(diff: string): Promise<string> {
+export async function generateCommitMessage(diff: string): Promise<string> {
   if (!OPENROUTER_API_KEY) {
-    throw new Error("OpenRouter API key is not configured. Cannot use fallback service.");
+    throw new Error("OpenRouter API key is not configured in your .env file.");
   }
 
   const prompt = `
@@ -33,7 +26,7 @@ export async function generateCommitMessageWithOpenRouter(diff: string): Promise
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "tngtech/deepseek-r1t2-chimera:free",
+        model: "openai/gpt-oss-120b:free",
         messages: [{ role: "user", content: prompt }],
       }),
     });
@@ -46,7 +39,7 @@ export async function generateCommitMessageWithOpenRouter(diff: string): Promise
     const data = await response.json();
     return data.choices[0].message.content;
   } catch (error: any) {
-    console.error("Error generating commit message from OpenRouter:", error);
-    throw new Error(`Failed to communicate with the OpenRouter model: ${error.message}`);
+    console.error("Error generating commit message:", error);
+    throw new Error(`Failed to generate message: ${error.message}`);
   }
 }
