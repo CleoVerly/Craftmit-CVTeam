@@ -7,6 +7,17 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeView, setActiveView] = useState<'input' | 'output'>('input');
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(commitMessage);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
 
   const handleGenerateCommit = async () => {
     if (!diffInput.trim()) {
@@ -104,8 +115,32 @@ function App() {
               />
             ) : (
               <div
-                className="w-full h-full p-4 bg-[#F8F9FA] border-2 border-black rounded-lg font-mono text-sm whitespace-pre-wrap overflow-auto"
+                className="w-full h-full p-4 bg-[#F8F9FA] border-2 border-black rounded-lg font-mono text-sm whitespace-pre-wrap overflow-auto relative group"
               >
+                {commitMessage && !isLoading && (
+                  <button
+                    onClick={handleCopy}
+                    className="absolute top-4 right-4 bg-[#00FF66] border-2 border-black px-3 py-2 shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-[#FF90E8] active:translate-y-0.5 active:shadow-[0px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center gap-2 font-bold text-sm z-10"
+                    title="Copy to clipboard"
+                  >
+                    {isCopied ? (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        Copy
+                      </>
+                    )}
+                  </button>
+                )}
                 {isLoading ? (
                   <div className="flex h-full items-center justify-center font-bold text-2xl animate-pulse text-[#FF90E8] drop-shadow-[2px_2px_0px_rgba(0,0,0,1)]">
                     Generating Magic...
