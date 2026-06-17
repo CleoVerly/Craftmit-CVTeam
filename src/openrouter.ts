@@ -7,6 +7,15 @@ export async function generateCommitMessage(diff: string): Promise<string> {
     throw new Error("OpenRouter API key is not configured in your .env file.");
   }
 
+  // Limit character count to avoid OpenRouter API context length errors
+  // 1 token is roughly 4 characters, we limit to ~400k chars to stay safely under the 131k token limit
+  const MAX_CHARS = 400000;
+  let processedDiff = diff;
+  if (processedDiff.length > MAX_CHARS) {
+    console.warn(`Diff too large (${processedDiff.length} chars). Truncating to ${MAX_CHARS} chars.`);
+    processedDiff = processedDiff.substring(0, MAX_CHARS) + "\n\n...[DIFF TRUNCATED DUE TO LENGTH]...";
+  }
+
   const prompt = `
     Based on the following git diff, please generate a concise and clear commit message in English.
     The message should follow the Conventional Commits specification.
@@ -14,7 +23,7 @@ export async function generateCommitMessage(diff: string): Promise<string> {
 
     Here is the git diff:
     \`\`\`diff
-    ${diff}
+    ${processedDiff}
     \`\`\`
   `;
 

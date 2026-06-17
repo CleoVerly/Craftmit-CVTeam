@@ -114,13 +114,11 @@ function App() {
                 placeholder="Paste the output of 'git diff' here..."
               />
             ) : (
-              <div
-                className="w-full h-full p-4 bg-[#F8F9FA] border-2 border-black rounded-lg font-mono text-sm whitespace-pre-wrap overflow-auto relative group"
-              >
+              <>
                 {commitMessage && !isLoading && (
                   <button
                     onClick={handleCopy}
-                    className="absolute top-4 right-4 bg-[#00FF66] border-2 border-black px-3 py-2 shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-[#FF90E8] active:translate-y-0.5 active:shadow-[0px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center gap-2 font-bold text-sm z-10"
+                    className="absolute top-4 right-8 bg-[#00FF66] border-2 border-black px-3 py-2 shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-[#FF90E8] active:translate-y-0.5 active:shadow-[0px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center gap-2 font-bold text-sm z-10"
                     title="Copy to clipboard"
                   >
                     {isCopied ? (
@@ -141,16 +139,20 @@ function App() {
                     )}
                   </button>
                 )}
-                {isLoading ? (
-                  <div className="flex h-full items-center justify-center font-bold text-2xl animate-pulse text-[#FF90E8] drop-shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-                    Generating Magic...
-                  </div>
-                ) : commitMessage ? (
-                  commitMessage
-                ) : (
-                  <span className="text-gray-400 font-bold italic">Your commit message will appear here...</span>
-                )}
-              </div>
+                <div
+                  className="w-full h-full p-4 bg-[#F8F9FA] border-2 border-black rounded-lg font-mono text-sm whitespace-pre-wrap overflow-auto relative group"
+                >
+                  {isLoading ? (
+                    <div className="flex h-full items-center justify-center font-bold text-2xl animate-pulse text-[#FF90E8] drop-shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                      Generating Magic...
+                    </div>
+                  ) : commitMessage ? (
+                    commitMessage
+                  ) : (
+                    <span className="text-gray-400 font-bold italic">Your commit message will appear here...</span>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </div>
