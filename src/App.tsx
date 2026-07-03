@@ -1,181 +1,188 @@
-import { useState } from 'react';
-import { generateCommitMessage } from './openrouter';
+import { useState, useEffect } from 'react';
+import { MAX_CHARS, askAI, type AIAction } from './openrouter';
+import { Sidebar } from './components/Sidebar';
+import { Editor } from './components/Editor';
+import { AIPanel } from './components/AIPanel';
+import { CommandPalette } from './components/CommandPalette';
+import { HistoryPanel, type HistoryItem } from './components/HistoryPanel';
+import { ComingSoon } from './components/ComingSoon';
+import { Menu } from 'lucide-react';
 
 function App() {
   const [diffInput, setDiffInput] = useState('');
-  const [commitMessage, setCommitMessage] = useState('');
+  const [results, setResults] = useState<Record<AIAction, string>>({
+    commit: '',
+    review: '',
+    explain: '',
+    pr: ''
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [activeView, setActiveView] = useState<'input' | 'output'>('input');
-  const [isCopied, setIsCopied] = useState(false);
+  const [activeAction, setActiveAction] = useState<AIAction>('commit');
+  const [activeTab, setActiveTab] = useState('generate');
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const handleCopy = async () => {
+  // History State
+  const [history, setHistory] = useState<HistoryItem[]>(() => {
     try {
-      await navigator.clipboard.writeText(commitMessage);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
+      const saved = localStorage.getItem('craftmit-history');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
     }
-  };
+  });
 
-  const handleGenerateCommit = async () => {
+  const isOverLimit = diffInput.length > MAX_CHARS;
+
+  const handleGenerate = async () => {
     if (!diffInput.trim()) {
       setError('Please paste your git diff content first!');
+      return;
+    }
+    if (isOverLimit) {
+      setError(`Your diff exceeds the maximum limit of ${MAX_CHARS.toLocaleString()} characters.`);
       return;
     }
     
     setIsLoading(true);
     setError('');
-    setCommitMessage('');
-    setActiveView('output'); 
     
     try {
-      const generatedMessage = await generateCommitMessage(diffInput);
-      setCommitMessage(generatedMessage);
+      const generatedMessage = await askAI(diffInput, activeAction);
+      
+      setResults(prev => ({ ...prev, [activeAction]: generatedMessage }));
+      
+      // Save to history
+      const newItem: HistoryItem = {
+        id: Date.now().toString(),
+        timestamp: Date.now(),
+        action: activeAction,
+        diffInput,
+        result: generatedMessage
+      };
+      
+      setHistory(prev => {
+        const next = [newItem, ...prev].slice(0, 50); // Keep last 50
+        try {
+          localStorage.setItem('craftmit-history', JSON.stringify(next));
+        } catch {
+          // Ignore quota exceeded errors silently for now
+        }
+        return next;
+      });
+      
     } catch (e: any) {
-      setError(e.message || 'Failed to generate commit message. Please try again.');
-      setActiveView('input');
+      setError(e.message || 'Failed to generate response. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const toggleView = () => {
-    setActiveView((prev) => (prev === 'input' ? 'output' : 'input'));
+  const handleViewHistory = (item: HistoryItem) => {
+    setDiffInput(item.diffInput);
+    setActiveAction(item.action);
+    setResults(prev => ({ ...prev, [item.action]: item.result }));
+    setActiveTab('generate');
+  };
+
+  const handleRemoveHistoryItem = (id: string) => {
+    setHistory(prev => {
+      const next = prev.filter(item => item.id !== id);
+      try {
+        localStorage.setItem('craftmit-history', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const handleClearHistory = () => {
+    setHistory([]);
+    try {
+      localStorage.removeItem('craftmit-history');
+    } catch {}
   };
 
   return (
-    <div className="min-h-screen bg-[#FFF4E0] text-black flex flex-col items-center p-6 sm:p-10 font-sans selection:bg-[#FF90E8]">
-      <div className="w-full max-w-3xl">
+    <div className="min-h-screen bg-grid bg-[#FFF4E0] text-black font-sans selection:bg-[#FF90E8] flex overflow-hidden">
+      {/* Background Noise Layer */}
+      <div className="absolute inset-0 bg-noise pointer-events-none z-0"></div>
+      
+      {/* Sidebar */}
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+
+      {/* Main Workspace */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden z-10">
         
-        {/* Header Section */}
-        <div className="mb-10 text-center space-y-4">
-          <h1 className="text-5xl font-black uppercase tracking-tight bg-[#FF90E8] border-4 border-black inline-block px-6 py-3 shadow-[8px_8px_0px_rgba(0,0,0,1)] -rotate-1">
-            Diff to Commit
+        {/* Mobile Header */}
+        <div className="md:hidden bg-white border-b-4 border-black p-4 flex justify-between items-center z-20">
+          <h1 className="text-xl font-black uppercase tracking-tight bg-[#FF90E8] border-2 border-black inline-block px-2 py-1 shadow-neo-sm -rotate-2">
+            Craftmit
           </h1>
-          <p className="text-xl font-bold text-gray-800 mt-4">
-            Paste your <code className="bg-[#FFE500] px-2 py-1 border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)]">git diff</code> below and get magic! ✨
-          </p>
-        </div>
-
-        {/* Main Container */}
-        <div className="flex flex-col bg-white border-4 border-black rounded-xl p-6 shadow-[12px_12px_0px_rgba(0,0,0,1)] transition-all">
-          
-          {/* Container Header with Swap Button */}
-          <div className="flex justify-between items-center mb-4 border-b-4 border-black pb-4">
-            <label className="text-2xl font-bold uppercase tracking-wider flex items-center gap-3">
-              {activeView === 'input' ? (
-                <>
-                  <span className="bg-[#00E5FF] w-6 h-6 border-2 border-black inline-block rounded-full shadow-[2px_2px_0px_rgba(0,0,0,1)]"></span>
-                  Input
-                </>
-              ) : (
-                <>
-                  <span className="bg-[#FFE500] w-6 h-6 border-2 border-black inline-block rounded-full shadow-[2px_2px_0px_rgba(0,0,0,1)]"></span>
-                  Output Area
-                </>
-              )}
-            </label>
-
-            {/* Swap Button */}
-            <button
-              onClick={toggleView}
-              title="Swap View"
-              className="group bg-[#00FF66] p-2 border-4 border-black rounded-full shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:bg-[#FF90E8] active:translate-y-0.5 active:shadow-[0px_0px_0px_rgba(0,0,0,1)] transition-all"
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                width="28" 
-                height="28" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="black" 
-                strokeWidth="3" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-                className={`transition-transform duration-300 ${activeView === 'output' ? 'rotate-180' : ''}`}
-              >
-                <path d="M21 2v6h-6"></path>
-                <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
-                <path d="M3 22v-6h6"></path>
-                <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
-              </svg>
-            </button>
-          </div>
-
-          {/* Conditional Content (Input or Output) */}
-          <div className="h-96 relative">
-            {activeView === 'input' ? (
-              <textarea
-                value={diffInput}
-                onChange={(e) => setDiffInput(e.target.value)}
-                className="w-full h-full p-4 bg-[#F8F9FA] border-2 border-black rounded-lg focus:outline-none focus:bg-[#E0F7FA] font-mono text-sm resize-none transition-colors"
-                placeholder="Paste the output of 'git diff' here..."
-              />
-            ) : (
-              <>
-                {commitMessage && !isLoading && (
-                  <button
-                    onClick={handleCopy}
-                    className="absolute top-4 right-8 bg-[#00FF66] border-2 border-black px-3 py-2 shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-[#FF90E8] active:translate-y-0.5 active:shadow-[0px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center gap-2 font-bold text-sm z-10"
-                    title="Copy to clipboard"
-                  >
-                    {isCopied ? (
-                      <>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                        </svg>
-                        Copy
-                      </>
-                    )}
-                  </button>
-                )}
-                <div
-                  className="w-full h-full p-4 bg-[#F8F9FA] border-2 border-black rounded-lg font-mono text-sm whitespace-pre-wrap overflow-auto relative group"
-                >
-                  {isLoading ? (
-                    <div className="flex h-full items-center justify-center font-bold text-2xl animate-pulse text-[#FF90E8] drop-shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-                      Generating Magic...
-                    </div>
-                  ) : commitMessage ? (
-                    commitMessage
-                  ) : (
-                    <span className="text-gray-400 font-bold italic">Your commit message will appear here...</span>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="mt-6 bg-[#FF4949] text-white border-4 border-black p-4 font-bold text-lg shadow-[4px_4px_0px_rgba(0,0,0,1)] flex items-center gap-3 animate-bounce">
-             ⚠️ {error}
-          </div>
-        )}
-
-        {/* Action Button */}
-        <div className="mt-10 flex justify-center">
-          <button
-            onClick={handleGenerateCommit}
-            disabled={isLoading}
-            className="group relative bg-[#00E5FF] hover:bg-[#FFE500] disabled:bg-gray-300 text-black border-4 border-black font-black text-3xl uppercase py-4 px-16 shadow-[8px_8px_0px_rgba(0,0,0,1)] transition-all duration-150 active:translate-y-1.5 active:shadow-[0px_0px_0px_rgba(0,0,0,1)] disabled:active:translate-x-0 disabled:active:translate-y-0 disabled:active:shadow-[8px_8px_0px_rgba(0,0,0,1)] disabled:cursor-not-allowed"
+          <button 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 border-2 border-black bg-[#FFE500] shadow-neo-sm active:translate-y-0.5 active:shadow-none"
           >
-            {isLoading ? 'Wait...' : 'Generate!'}
+            <Menu size={24} />
           </button>
         </div>
-        
+
+        {/* Top Navbar / Header area */}
+        <div className="hidden md:flex justify-between items-center p-6 pb-2 z-20">
+          <h2 className="text-2xl font-black uppercase tracking-widest bg-white border-4 border-black px-4 py-2 shadow-neo">
+            {activeTab === 'history' ? 'History' : activeTab === 'tools' ? 'AI Tools' : 'Workspace'}
+          </h2>
+          <button 
+            onClick={() => setIsCommandPaletteOpen(true)}
+            className="flex items-center gap-3 bg-white border-4 border-black px-4 py-2 font-bold shadow-neo hover:bg-[#F8F9FA] hover:-translate-y-1 active:translate-y-0 active:shadow-none transition-all"
+          >
+            <span className="text-gray-500 text-sm border-2 border-black px-2 py-0.5 rounded bg-gray-100">Ctrl+K</span>
+            Command Palette
+          </button>
+        </div>
+
+        {/* Workspace Content */}
+        <div className="flex-1 flex flex-col md:flex-row gap-6 p-6 overflow-auto">
+          {activeTab === 'tools' ? (
+            <ComingSoon onBack={() => setActiveTab('generate')} />
+          ) : activeTab === 'history' ? (
+            <HistoryPanel 
+              history={history} 
+              onView={handleViewHistory} 
+              onRemoveItem={handleRemoveHistoryItem}
+              onClearAll={handleClearHistory}
+            />
+          ) : (
+            <>
+              {/* Left Column: Editor */}
+              <Editor 
+                diffInput={diffInput} 
+                setDiffInput={setDiffInput} 
+                isOverLimit={isOverLimit} 
+              />
+              
+              {/* Right Column: AI Panel */}
+              <AIPanel 
+                isLoading={isLoading}
+                error={error}
+                result={results[activeAction]}
+                action={activeAction}
+                setAction={setActiveAction}
+                onGenerate={handleGenerate}
+                isOverLimit={isOverLimit}
+              />
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Command Palette Modal */}
+      <CommandPalette 
+        isOpen={isCommandPaletteOpen}
+        setIsOpen={setIsCommandPaletteOpen}
+        onActionSelect={setActiveAction}
+        onGenerate={handleGenerate}
+      />
     </div>
   );
 }
