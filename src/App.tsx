@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { MAX_CHARS, askAI, type AIAction } from './openrouter';
 import { Sidebar } from './components/Sidebar';
 import { Editor } from './components/Editor';

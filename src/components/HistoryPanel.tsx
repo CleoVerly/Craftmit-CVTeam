@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { AIAction } from '../openrouter';
-import { History, Copy, Eye, Clock, Trash2, AlertTriangle, X } from 'lucide-react';
+import { History, Eye, Clock, Trash2, AlertTriangle, X } from 'lucide-react';
 
 export interface HistoryItem {
   id: string;
