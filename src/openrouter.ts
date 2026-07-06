@@ -1,16 +1,10 @@
 // src/openrouter.ts
 
-const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
-
 export const MAX_CHARS = 400000;
 
 export type AIAction = 'commit' | 'review' | 'explain' | 'pr';
 
 export async function askAI(diff: string, action: AIAction = 'commit'): Promise<string> {
-  if (!OPENROUTER_API_KEY) {
-    throw new Error("OpenRouter API key is not configured in your .env file.");
-  }
-
   let processedDiff = diff;
   if (processedDiff.length > MAX_CHARS) {
     throw new Error(`Diff is too large. Maximum allowed characters is ${MAX_CHARS}.`);
@@ -72,27 +66,23 @@ export async function askAI(diff: string, action: AIAction = 'commit'): Promise<
   }
 
   try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const response = await fetch("/api/openrouter", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: "nvidia/nemotron-3-ultra-550b-a55b:free",
-        messages: [{ role: "user", content: prompt }],
-      }),
+      body: JSON.stringify({ prompt }),
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(`OpenRouter API error (${response.status}): ${errorData.error?.message || 'Unknown error'}`);
+      throw new Error(errorData.error || `Server API error (${response.status})`);
     }
 
     const data = await response.json();
     if (!data.choices || data.choices.length === 0) {
       console.error("Unexpected API response:", data);
-      throw new Error(`OpenRouter returned an unexpected response: ${JSON.stringify(data)}`);
+      throw new Error(`Server returned an unexpected response: ${JSON.stringify(data)}`);
     }
     return data.choices[0].message.content;
   } catch (error: any) {
