@@ -27,19 +27,16 @@ function isRateLimited(ip: string): boolean {
 // This prevents random websites from calling your API.
 // ============================================================
 const ALLOWED_ORIGINS: string[] = [
-  // Add your production domain(s), e.g.:
-  // "https://craftmit-cvteam.vercel.app",
-  // "https://your-custom-domain.com",
+  // Production domain(s)
+  "https://craftmit.cleoverly.online",
+  // Localhost (development)
   "http://localhost:5173",   // Vite dev server
   "http://localhost:4173",   // Vite preview
   "http://localhost:3000",   // fallback
 ];
 
 function isOriginAllowed(origin: string | undefined): boolean {
-  // During development or if no origin header, be permissive on localhost
   if (!origin) return false;
-  // If no production domains configured yet, allow all (remove this later!)
-  if (ALLOWED_ORIGINS.length <= 3) return true;
   return ALLOWED_ORIGINS.some((allowed) => origin.startsWith(allowed));
 }
 
