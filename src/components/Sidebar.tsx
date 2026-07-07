@@ -1,4 +1,4 @@
-import { Code2, History, MessageSquare, Settings } from 'lucide-react';
+import { Code2, History, MessageSquare, Settings, HelpCircle } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -37,10 +37,26 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
           ))}
         </nav>
       </div>
-      <button className="w-full flex items-center gap-3 px-4 py-3 bg-[#00E5FF] border-4 border-black font-bold text-lg hover:-translate-y-1 hover:shadow-neo active:translate-y-0 active:shadow-none transition-all">
-        <Settings size={20} />
-        Settings
-      </button>
+      <div className="space-y-3">
+        <button 
+          onClick={() => setActiveTab('howto')}
+          className={`w-full flex items-center gap-3 px-4 py-3 border-4 border-black font-bold text-lg hover:-translate-y-1 hover:shadow-neo active:translate-y-0 active:shadow-none transition-all ${
+            activeTab === 'howto' ? 'bg-[#FFE500] shadow-neo' : 'bg-[#FF90E8]'
+          }`}
+        >
+          <HelpCircle size={20} />
+          How to Use
+        </button>
+        <button 
+          onClick={() => setActiveTab('settings')}
+          className={`w-full flex items-center gap-3 px-4 py-3 border-4 border-black font-bold text-lg hover:-translate-y-1 hover:shadow-neo active:translate-y-0 active:shadow-none transition-all ${
+            activeTab === 'settings' ? 'bg-[#FFE500] shadow-neo' : 'bg-[#00E5FF]'
+          }`}
+        >
+          <Settings size={20} />
+          Settings
+        </button>
+      </div>
     </div>
   );
 }

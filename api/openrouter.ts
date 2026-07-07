@@ -7,6 +7,20 @@
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 10;      // max 10 requests per minute per IP
 
+type VercelRequest = {
+  method?: string;
+  headers: Record<string, string | undefined>;
+  body?: unknown;
+  socket?: { remoteAddress?: string };
+};
+
+type VercelResponse = {
+  setHeader(key: string, value: string): void;
+  status(code: number): VercelResponse;
+  json(body: unknown): VercelResponse;
+  end(): VercelResponse;
+};
+
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
 function isRateLimited(ip: string): boolean {
@@ -48,7 +62,7 @@ const MAX_PROMPT_LENGTH = 500_000; // characters
 // ============================================================
 // Handler
 // ============================================================
-export default async function handler(req: any, res: any) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   // --- CORS headers ---
   const origin = req.headers?.origin || req.headers?.referer || "";
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -84,7 +98,8 @@ export default async function handler(req: any, res: any) {
   }
 
   // --- Input validation ---
-  const { prompt } = req.body || {};
+  const body = (req.body ?? {}) as { prompt?: unknown };
+  const { prompt } = body;
 
   if (!prompt || typeof prompt !== "string") {
     return res.status(400).json({ error: "A valid prompt string is required." });
@@ -100,9 +115,7 @@ export default async function handler(req: any, res: any) {
 
   // --- API key check ---
   if (!process.env.OPENROUTER_API_KEY) {
-    // Don't reveal internal config details to the client
-    console.error("OPENROUTER_API_KEY is not set in environment variables.");
-    return res.status(500).json({ error: "AI service is not configured." });
+    return res.status(500).json({ error: "AI service is temporarily unavailable." });
   }
 
   // --- Call OpenRouter ---
@@ -120,17 +133,13 @@ export default async function handler(req: any, res: any) {
     });
 
     if (!response.ok) {
-      // Log the real error server-side, send a generic message to the client
-      const errorData = await response.json().catch(() => ({}));
-      console.error("OpenRouter API error:", response.status, errorData);
+      await response.json().catch(() => ({}));
       return res.status(502).json({ error: "AI service returned an error. Please try again later." });
     }
 
     const data = await response.json();
     return res.status(200).json(data);
-  } catch (error: any) {
-    // Never leak internal error messages to the client
-    console.error("Server error calling OpenRouter:", error);
+  } catch {
     return res.status(500).json({ error: "An internal error occurred. Please try again later." });
   }
 }

@@ -1,24 +1,36 @@
+import { Trash2 } from 'lucide-react';
 import { MAX_CHARS } from '../openrouter';
 
 interface EditorProps {
   diffInput: string;
   setDiffInput: (val: string) => void;
   isOverLimit: boolean;
+  onClear?: () => void;
 }
 
-export function Editor({ diffInput, setDiffInput, isOverLimit }: EditorProps) {
+export function Editor({ diffInput, setDiffInput, isOverLimit, onClear }: EditorProps) {
   return (
     <div className="flex-1 bg-white border-4 border-black shadow-neo-lg rounded-xl overflow-hidden flex flex-col relative transition-all">
       {/* Editor Header */}
-      <div className="bg-[#E0F7FA] border-b-4 border-black px-4 py-3 flex items-center gap-3">
-        <div className="flex gap-2">
-          <div className="w-3 h-3 rounded-full bg-[#FF4949] border-2 border-black"></div>
-          <div className="w-3 h-3 rounded-full bg-[#FFE500] border-2 border-black"></div>
-          <div className="w-3 h-3 rounded-full bg-[#00FF66] border-2 border-black"></div>
+      <div className="bg-[#E0F7FA] border-b-4 border-black px-4 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex gap-2">
+            <div className="w-3 h-3 rounded-full bg-[#FF4949] border-2 border-black"></div>
+            <div className="w-3 h-3 rounded-full bg-[#FFE500] border-2 border-black"></div>
+            <div className="w-3 h-3 rounded-full bg-[#00FF66] border-2 border-black"></div>
+          </div>
+          <div className="text-sm font-bold bg-white border-2 border-black px-3 py-1 -skew-x-6 shadow-neo-sm">
+            git_diff.txt
+          </div>
         </div>
-        <div className="text-sm font-bold bg-white border-2 border-black px-3 py-1 -skew-x-6 shadow-neo-sm">
-          git_diff.txt
-        </div>
+        {diffInput && onClear && (
+          <button 
+            onClick={onClear}
+            className="flex items-center gap-1 bg-[#FF4949] text-white border-2 border-black px-2 py-1 text-xs font-bold shadow-neo-sm hover:translate-y-[1px] hover:translate-x-[1px] hover:shadow-none transition-all"
+          >
+            <Trash2 size={14} /> Clear
+          </button>
+        )}
       </div>
       
       {/* Editor Body */}

@@ -6,6 +6,8 @@ import { AIPanel } from './components/AIPanel';
 import { CommandPalette } from './components/CommandPalette';
 import { HistoryPanel, type HistoryItem } from './components/HistoryPanel';
 import { ComingSoon } from './components/ComingSoon';
+import { HowToUse } from './components/HowToUse';
+import { SettingsPanel } from './components/SettingsPanel';
 import { Menu } from 'lucide-react';
 
 function App() {
@@ -72,8 +74,8 @@ function App() {
         return next;
       });
       
-    } catch (e: any) {
-      setError(e.message || 'Failed to generate response. Please try again.');
+    } catch (e) {
+      setError((e instanceof Error ? e.message : String(e)) || 'Failed to generate response. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -89,9 +91,11 @@ function App() {
   const handleRemoveHistoryItem = (id: string) => {
     setHistory(prev => {
       const next = prev.filter(item => item.id !== id);
-      try {
-        localStorage.setItem('craftmit-history', JSON.stringify(next));
-      } catch {}
+        try {
+          localStorage.setItem('craftmit-history', JSON.stringify(next));
+        } catch {
+          // Ignore quota exceeded errors silently for now
+        }
       return next;
     });
   };
@@ -100,7 +104,9 @@ function App() {
     setHistory([]);
     try {
       localStorage.removeItem('craftmit-history');
-    } catch {}
+    } catch {
+      // Ignore quota exceeded errors silently
+    }
   };
 
   return (
@@ -130,7 +136,7 @@ function App() {
         {/* Top Navbar / Header area */}
         <div className="hidden md:flex justify-between items-center p-6 pb-2 z-20">
           <h2 className="text-2xl font-black uppercase tracking-widest bg-white border-4 border-black px-4 py-2 shadow-neo">
-            {activeTab === 'history' ? 'History' : activeTab === 'tools' ? 'AI Tools' : 'Workspace'}
+            {activeTab === 'history' ? 'History' : activeTab === 'tools' ? 'AI Tools' : activeTab === 'howto' ? 'How to Use' : activeTab === 'settings' ? 'Settings' : 'Workspace'}
           </h2>
           <button 
             onClick={() => setIsCommandPaletteOpen(true)}
@@ -152,6 +158,10 @@ function App() {
               onRemoveItem={handleRemoveHistoryItem}
               onClearAll={handleClearHistory}
             />
+          ) : activeTab === 'howto' ? (
+            <HowToUse />
+          ) : activeTab === 'settings' ? (
+            <SettingsPanel />
           ) : (
             <>
               {/* Left Column: Editor */}
@@ -159,6 +169,11 @@ function App() {
                 diffInput={diffInput} 
                 setDiffInput={setDiffInput} 
                 isOverLimit={isOverLimit} 
+                onClear={() => {
+                  setDiffInput('');
+                  setResults({ commit: '', review: '', explain: '', pr: '' });
+                  setError('');
+                }}
               />
               
               {/* Right Column: AI Panel */}

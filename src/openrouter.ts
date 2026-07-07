@@ -1,11 +1,9 @@
-// src/openrouter.ts
-
 export const MAX_CHARS = 400000;
 
 export type AIAction = 'commit' | 'review' | 'explain' | 'pr';
 
 export async function askAI(diff: string, action: AIAction = 'commit'): Promise<string> {
-  let processedDiff = diff;
+  const processedDiff = diff;
   if (processedDiff.length > MAX_CHARS) {
     throw new Error(`Diff is too large. Maximum allowed characters is ${MAX_CHARS}.`);
   }
@@ -85,8 +83,8 @@ export async function askAI(diff: string, action: AIAction = 'commit'): Promise<
       throw new Error(`Server returned an unexpected response: ${JSON.stringify(data)}`);
     }
     return data.choices[0].message.content;
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error asking AI:", error);
-    throw new Error(`Failed to generate response: ${error.message}`);
+    throw new Error(`Failed to generate response: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
